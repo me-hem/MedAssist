@@ -109,7 +109,7 @@
                             <select id="time-minute" required>
                                 <option value="">Minute</option>
                                 <option value="00">00</option>
-                                <option value="10">10</option>
+                                <option value="15">15</option>
                                 <option value="30">30</option>
                                 <option value="45">45</option>
                             </select>
@@ -138,6 +138,7 @@
         const result = document.getElementById("analysis-result");
         const verifyButton = document.getElementById("verify-button");
         let uploadedImagePath = "";
+        const result1 = document.getElementById("save-result");
 
         form.addEventListener(
             "submit",
@@ -151,6 +152,8 @@
                     result.textContent = "कृपया दवाई की फोटो चुनें।";
                     return;
                 }
+                result1.innerHTML = ``;
+
                 result.textContent = "फोटो और दवाई की जानकारी जाँची जा रही है...";
 
                 const formData = new FormData();
@@ -213,7 +216,7 @@
 
             const period = document.getElementById("time-period").value;
 
-            const result1 = document.getElementById("save-result");
+
 
             if (!medicineNameEnglish || !brandNameEnglish || !medicineNameHindi || !brandNameHindi || !dose || !hour || !minute || !period) {
                 alert("कृपया सभी जानकारी भरें।");
