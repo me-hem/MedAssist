@@ -5,3 +5,5 @@ __pycache__/
 .env
 *.db
 .DS_Store
+uploads/
+audio/

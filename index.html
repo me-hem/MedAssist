@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="hi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>MedAssist</title>
+
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+
+    <header>
+        <h1>MedAssist</h1>
+        <p>आपकी दवाई, सही समय पर</p>
+    </header>
+
+
+    <main>
+
+        <!-- Patient Section -->
+        <section id="patient">
+            <div class="reminder-header">
+                <h2>Medicine Reminder</h2>
+                <div id="clock">00:00:00</div>
+            </div>
+            <div id="medicine-card">
+                <p>अभी कोई दवाई नहीं है।</p>
+            </div>
+        </section>
+
+
+        <!-- Caregiver Section -->
+        <section id="caregiver">
+            <h2>Caregiver</h2>
+
+            <form id="medicine-form">
+                <label for="medicine-image">Medicine Image</label>
+
+                <div class="upload-row">
+                    <input type="file" id="medicine-image" accept="image/*" capture="environment" required>
+
+                    <button type="submit">दवाई पहचानें</button>
+                </div>
+            </form>
+
+            <div id="analysis-result"></div>
+            <div id="verification-form" style="display: none;">
+                <h3>दवाई की पुष्टि करें</h3>
+
+                <div class="form-row">
+                    <div class="form-field">
+                        <label for="medicine-name">Medicine Name</label>
+                        <input type="text" id="medicine-name" required>
+                    </div>
+
+                    <div class="form-field">
+                        <label for="brand-name">Brand Name</label>
+                        <input type="text" id="brand-name" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-field">
+                        <label for="medicine-hindi">Hindi Medicine Name</label>
+                        <input type="text" id="medicine-hindi" placeholder="हिंदी में दवाई का नाम" required>
+                    </div>
+
+                    <div class="form-field">
+                        <label for="brand-hindi">Hindi Brand Name</label>
+                        <input type="text" id="brand-hindi" placeholder="हिंदी में ब्रांड नाम" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-field">
+                        <label for="dose">Dose</label>
+                        <select id="dose" required>
+                            <option value="">Select dose</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                        </select>
+                    </div>
+
+                    <div class="form-field">
+                        <label>Time</label>
+
+                        <div class="time-row">
+                            <select id="time-hour" required>
+                                <option value="">Hour</option>
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                                <option value="4">4</option>
+                                <option value="5">5</option>
+                                <option value="6">6</option>
+                                <option value="7">7</option>
+                                <option value="8">8</option>
+                                <option value="9">9</option>
+                                <option value="10">10</option>
+                                <option value="11">11</option>
+                                <option value="12">12</option>
+                            </select>
+
+                            <select id="time-minute" required>
+                                <option value="">Minute</option>
+                                <option value="00">00</option>
+                                <option value="10">10</option>
+                                <option value="30">30</option>
+                                <option value="45">45</option>
+                            </select>
+
+                            <select id="time-period" required>
+                                <option value="">AM/PM</option>
+                                <option value="AM">AM</option>
+                                <option value="PM">PM</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="button" id="verify-button">पुष्टि करें</button>
+            </div>
+            <div id="save-result"></div>
+
+        </section>
+
+    </main>
+
+
+    <script>
+
+        const form = document.getElementById("medicine-form");
+        const result = document.getElementById("analysis-result");
+        const verifyButton = document.getElementById("verify-button");
+        let uploadedImagePath = "";
+
+        form.addEventListener(
+            "submit",
+            async (event) => {
+                event.preventDefault();
+                const imageInput = document.getElementById("medicine-image");
+
+                const image = imageInput.files[0];
+
+                if (!image) {
+                    result.textContent = "कृपया दवाई की फोटो चुनें।";
+                    return;
+                }
+                result.textContent = "फोटो और दवाई की जानकारी जाँची जा रही है...";
+
+                const formData = new FormData();
+
+                formData.append("image", image);
+
+                try {
+                    const response = await fetch("/analyze", { method: "POST", body: formData });
+
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        result.textContent = data.detail || "Upload failed.";
+                        return;
+                    }
+
+                    uploadedImagePath = data.image;
+
+                    result.innerHTML = `
+                        <p>
+                            Gemma ने दवाई की जानकारी निकाली है।
+                            कृपया जाँच करें।
+                        </p>
+                    `;
+
+                    document.getElementById("medicine-name").value = data.analysis.medicine_name_english;
+
+                    document.getElementById("brand-name").value = data.analysis.brand_name_english;
+
+                    document.getElementById("medicine-hindi").value = data.analysis.medicine_name_hindi;
+
+                    document.getElementById("brand-hindi").value = data.analysis.brand_name_hindi;
+
+                    document.getElementById("verification-form").style.display = "block";
+                }
+
+                catch (error) {
+                    console.error(error);
+                    result.textContent = "Server से संपर्क नहीं हो पाया।";
+                }
+
+            }
+        );
+
+        verifyButton.addEventListener("click", async () => {
+
+            const medicineNameEnglish = document.getElementById("medicine-name").value.trim();
+
+            const brandNameEnglish = document.getElementById("brand-name").value.trim();
+
+            const medicineNameHindi = document.getElementById("medicine-hindi").value.trim();
+
+            const brandNameHindi = document.getElementById("brand-hindi").value.trim();
+
+            const dose = document.getElementById("dose").value;
+
+            const hour = document.getElementById("time-hour").value;
+
+            const minute = document.getElementById("time-minute").value;
+
+            const period = document.getElementById("time-period").value;
+
+            const result1 = document.getElementById("save-result");
+
+            if (!medicineNameEnglish || !brandNameEnglish || !medicineNameHindi || !brandNameHindi || !dose || !hour || !minute || !period) {
+                alert("कृपया सभी जानकारी भरें।");
+                return;
+            }
+
+            let hour24 = parseInt(hour);
+
+            if (period === "AM") {
+                if (hour24 === 12) {
+                    hour24 = 0;
+                }
+            }
+            else {
+                if (hour24 !== 12) {
+                    hour24 += 12;
+                }
+
+            }
+
+            const time = String(hour24).padStart(2, "0") + ":" + minute;
+            const doseText = `${dose} Tablet`;
+            const formData = new FormData();
+
+            formData.append("medicine_name_english", medicineNameEnglish);
+
+            formData.append("brand_name_english", brandNameEnglish);
+
+            formData.append("medicine_name_hindi", medicineNameHindi);
+
+            formData.append("brand_name_hindi", brandNameHindi);
+
+            formData.append("image_path", uploadedImagePath);
+
+            formData.append("time", time);
+
+            formData.append("dose_text", doseText);
+
+            result1.innerHTML = "दवाई की जानकारी सेव की जा रही है...";
+            try {
+                verifyButton.disabled = true;
+
+
+                const response = await fetch("/medicines/save", {
+                    method: "POST",
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    result1.innerHTML = `
+            <p><strong>❌ दवाई सेव नहीं हो पाई।</strong></p>
+            <p>${data.detail || "कृपया दोबारा कोशिश करें।"}</p>
+        `;
+                    verifyButton.disabled = false;
+                    return;
+                }
+
+                result1.innerHTML = `
+        <p><strong>✅ दवाई सफलतापूर्वक सेव हो गई।</strong></p>
+        <p>अब सही समय पर दवाई लेने के लिए याद दिलाया जाएगा।</p>
+    `;
+
+                document.getElementById("verification-form").style.display = "none";
+                verifyButton.disabled = false;
+
+            } catch (error) {
+                console.error(error);
+
+                result1.innerHTML = `
+        <p><strong>❌ दवाई सेव नहीं हो पाई।</strong></p>
+        <p>Server से संपर्क नहीं हो पाया।</p>
+    `;
+
+                verifyButton.disabled = false;
+            }
+
+        }
+        );
+
+        let lastPlayedScheduleId = null;
+        let dismissedScheduleId = null;
+
+        function formatPatientTime(time) {
+            const [hourString, minute] = time.split(":");
+
+            let hour = parseInt(hourString);
+            const period = hour >= 12 ? "PM" : "AM";
+
+            if (hour === 0) {
+                hour = 12;
+            } else if (hour > 12) {
+                hour -= 12;
+            }
+
+            return `${hour}:${minute} ${period}`;
+        }
+
+        async function checkPatientReminder() {
+            try {
+                const response = await fetch("/patient/current");
+                const data = await response.json();
+
+                const card = document.getElementById("medicine-card");
+
+                if (!data.due) {
+                    card.innerHTML = `<p>अभी कोई दवाई नहीं है।</p>`;
+                    return;
+                }
+                if (dismissedScheduleId === data.schedule_id) {
+                    return;
+                }
+
+                card.innerHTML = `
+                    <div>
+                        <img src="${data.image}" alt="दवाई" style="max-width: 220px; border-radius: 12px;">
+
+                        <h3>${data.medicine_name_hindi}</h3>
+                        <p>${data.medicine_name_english}</p>
+
+                        <p>
+                            <strong>खुराक:</strong> ${data.dose_text}
+                        </p>
+
+                        <p>
+                            <strong>समय:</strong>
+                            ${formatPatientTime(data.time)}
+                        </p>
+
+                        <div>
+                            <button id="play-reminder">
+                                🔊 दोबारा सुनें
+                            </button>
+
+                            <button id="taken-button">
+                                ✅ दवाई ले ली
+                            </button>
+
+                            <button id="later-button">
+                                ⏰ बाद में
+                            </button>
+                        </div>
+                    `;
+
+                const playButton = document.getElementById("play-reminder");
+
+                playButton.onclick = () => {
+                    const audio = new Audio(data.audio);
+                    audio.play();
+                };
+
+                document.getElementById("taken-button").onclick = () => {
+                    dismissedScheduleId = data.schedule_id;
+
+                    document.getElementById("medicine-card").innerHTML = `
+                        <h3>✅ दवाई ले ली गई</h3>
+                        <p>अगली दवाई के समय फिर याद दिलाया जाएगा।</p>
+                    `;
+                };
+
+                document.getElementById("later-button").onclick = () => {
+                    dismissedScheduleId = data.schedule_id;
+
+                    document.getElementById("medicine-card").innerHTML = `
+                        <h3>⏰ ठीक है</h3>
+                        <p>दवाई बाद में लेने के लिए याद रखें।</p>
+                    `;
+                };
+
+                if (lastPlayedScheduleId !== data.schedule_id) {
+                    const audio = new Audio(data.audio);
+
+                    audio.play().catch(() => {
+                        console.log("Autoplay blocked. User can press आवाज़ सुनें.");
+                    });
+
+                    lastPlayedScheduleId = data.schedule_id;
+                }
+
+            } catch (error) {
+                console.error("Patient reminder check failed:", error);
+            }
+        }
+
+        checkPatientReminder();
+
+        setInterval(checkPatientReminder, 10000);
+
+        let reminderQueue = [];
+        let currentMedicine = null;
+        let reminderTimer = null;
+        let queueScheduleIds = new Set();
+
+
+        function formatPatientTime(time) {
+            const [hourString, minute] = time.split(":");
+
+            let hour = parseInt(hourString);
+            const period = hour >= 12 ? "PM" : "AM";
+
+            if (hour === 0) {
+                hour = 12;
+            } else if (hour > 12) {
+                hour -= 12;
+            }
+
+            return `${hour}:${minute} ${period}`;
+        }
+
+
+        function showCurrentMedicine() {
+            const card = document.getElementById("medicine-card");
+
+            if (reminderQueue.length === 0) {
+                currentMedicine = null;
+
+                if (reminderTimer) {
+                    clearTimeout(reminderTimer);
+                    reminderTimer = null;
+                }
+
+                card.innerHTML = `
+            <h3>✅ आज की सभी दवाइयाँ पूरी हो गईं।</h3>
+        `;
+
+                return;
+            }
+
+            currentMedicine = reminderQueue[0];
+
+            console.log("Showing medicine:", currentMedicine);
+
+            card.innerHTML = `
+    <div class="medicine-content">
+
+        <div class="medicine-image">
+            <img
+                src="${currentMedicine.image}"
+                alt="दवाई"
+            >
+        </div>
+
+        <div class="medicine-info">
+            <h3>${currentMedicine.medicine_name_hindi}</h3>
+
+            <p>${currentMedicine.medicine_name_english}</p>
+
+            <p>
+                <strong>खुराक:</strong>
+                ${currentMedicine.dose_text}
+            </p>
+
+            <p>
+                <strong>समय:</strong>
+                ${formatPatientTime(currentMedicine.time)}
+            </p>
+        </div>
+
+    </div>
+
+    <div class="medicine-actions">
+        <button id="play-reminder">
+            🔊 आवाज़ सुनें
+        </button>
+
+        <button id="taken-button">
+            ✅ दवाई ले ली
+        </button>
+
+        <button id="later-button">
+            ⏰ बाद में
+        </button>
+    </div>
+`;
+
+            document.getElementById("play-reminder").onclick = () => {
+                playCurrentReminder();
+            };
+
+            document.getElementById("taken-button").onclick = () => {
+                finishCurrentMedicine();
+            };
+
+            document.getElementById("later-button").onclick = () => {
+                finishCurrentMedicine();
+            };
+
+            playCurrentReminder();
+        }
+
+
+        function playCurrentReminder() {
+            if (!currentMedicine) {
+                return;
+            }
+
+            if (reminderTimer) {
+                clearTimeout(reminderTimer);
+                reminderTimer = null;
+            }
+
+            console.log("Playing audio:", currentMedicine.audio);
+
+            const audio = new Audio(currentMedicine.audio);
+
+            audio.onended = () => {
+                if (!currentMedicine) {
+                    return;
+                }
+
+                reminderTimer = setTimeout(() => {
+                    playCurrentReminder();
+                }, 5000);
+            };
+
+            audio.onerror = () => {
+                console.error("Audio playback failed.");
+
+                reminderTimer = setTimeout(() => {
+                    if (currentMedicine) {
+                        playCurrentReminder();
+                    }
+                }, 2000);
+            };
+
+            audio.play().catch((error) => {
+                console.log("Autoplay blocked:", error);
+            });
+        }
+
+        function finishCurrentMedicine() {
+            if (reminderTimer) {
+                clearTimeout(reminderTimer);
+                reminderTimer = null;
+            }
+
+            if (reminderQueue.length > 0) {
+                reminderQueue.shift();
+            }
+
+            showCurrentMedicine();
+        }
+
+
+        async function checkPatientReminder() {
+            try {
+                const response = await fetch("/patient/current");
+                const data = await response.json();
+
+                console.log("Patient API:", data);
+
+                if (!data.due) {
+                    return;
+                }
+
+                for (const medicine of data.medicines) {
+
+                    if (!queueScheduleIds.has(medicine.schedule_id)) {
+
+                        reminderQueue.push(medicine);
+
+                        queueScheduleIds.add(
+                            medicine.schedule_id
+                        );
+                    }
+                }
+
+                if (!currentMedicine && reminderQueue.length > 0) {
+                    showCurrentMedicine();
+                }
+
+            } catch (error) {
+                console.error(
+                    "Patient reminder check failed:",
+                    error
+                );
+            }
+        }
+
+
+        checkPatientReminder();
+
+        setInterval(
+            checkPatientReminder,
+            10000
+        );
+
+        function updateClock() {
+            const now = new Date();
+
+            const time = now.toLocaleTimeString("en-IN", {
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+                hour12: true
+            }).toUpperCase();
+
+            document.getElementById("clock").textContent = time;
+        }
+
+        updateClock();
+        setInterval(updateClock, 1000);
+    </script>
+
+</body>
+
+</html>
